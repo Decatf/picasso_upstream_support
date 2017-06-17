@@ -90,6 +90,13 @@ static void __init tegra_dt_init_irq(void)
 {
 	tegra_init_irq();
 	irqchip_init();
+
+	u32 prefetch;
+	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
+	prefetch = readl_relaxed(p+ L310_PREFETCH_CTRL);
+	prefetch &= !L310_PREFETCH_CTRL_OFFSET_MASK;
+	prefetch |= 0x05 & L310_PREFETCH_CTRL_OFFSET_MASK;
+	writel_relaxed(prefetch, p + L310_PREFETCH_CTRL);
 }
 
 static void __init tegra_dt_init(void)

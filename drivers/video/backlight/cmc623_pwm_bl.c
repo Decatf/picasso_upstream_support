@@ -20,6 +20,7 @@
 #include <linux/fb.h>
 #include <linux/backlight.h>
 #include <linux/delay.h>
+#include <linux/earlysuspend.h>
 
 #if defined(CONFIG_MACH_SAMSUNG_P4) || \
 	defined(CONFIG_MACH_SAMSUNG_P4WIFI)|| \
@@ -150,7 +151,7 @@ static void cmc623_pwm_send_intensity(struct backlight_device *bd)
 	current_intensity = intensity;
 }
 
-#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(CONFIG_PM) && !defined(CONFIG_PM_EARLYSUSPEND)
 static int cmc623_pwm_suspend(struct platform_device *swi_dev, pm_message_t state)
 {
 	struct backlight_device *bd = platform_get_drvdata(swi_dev);
@@ -172,7 +173,7 @@ static int cmc623_pwm_resume(struct platform_device *swi_dev)
 }
 #endif
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#ifdef CONFIG_PM_EARLYSUSPEND
 static void cmc623_pwm_early_suspend(struct early_suspend *h)
 {
 	struct backlight_device *bd = platform_get_drvdata(bl_pdev);
@@ -253,12 +254,12 @@ static int cmc623_pwm_probe(struct platform_device *pdev)
 
 	bl_pdev = pdev;
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#ifdef CONFIG_PM_EARLYSUSPEND
 	st_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	st_early_suspend.suspend = cmc623_pwm_early_suspend;
 	st_early_suspend.resume = cmc623_pwm_early_resume;
 	register_early_suspend(&st_early_suspend);
-#endif	/* CONFIG_HAS_EARLYSUSPEND */
+#endif	/* CONFIG_PM_EARLYSUSPEND */
 
 	printk("cmc623_pwm Probe END!!!\n");
 	return 0;
@@ -269,9 +270,9 @@ static int cmc623_pwm_remove(struct platform_device *pdev)
 {
 	struct backlight_device *bd = platform_get_drvdata(pdev);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#ifdef CONFIG_PM_EARLYSUSPEND
 	unregister_early_suspend(&st_early_suspend);
-#endif	/* CONFIG_HAS_EARLYSUSPEND */
+#endif	/* CONFIG_PM_EARLYSUSPEND */
 
 	bd->props.brightness = 0;
 	bd->props.power = 0;
@@ -295,7 +296,7 @@ static struct platform_driver cmc623_pwm_driver = {
 	},
 	.probe		= cmc623_pwm_probe,
 	.remove		= cmc623_pwm_remove,
-#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(CONFIG_PM) && !defined(CONFIG_PM_EARLYSUSPEND)
 	.suspend	= cmc623_pwm_suspend,
 	.resume		= cmc623_pwm_resume,
 #endif

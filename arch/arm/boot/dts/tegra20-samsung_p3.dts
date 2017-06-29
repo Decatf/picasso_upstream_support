@@ -705,14 +705,12 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		/*
 		@0C {
 			compatible = "samsung_p3,ak8975c";
 			reg = <0x0C>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(K, 4) IRQ_TYPE_LEVEL_HIGH>;
 		};
-		*/
 	};
 	i2c@13 {
 		compatible = "i2c-gpio";

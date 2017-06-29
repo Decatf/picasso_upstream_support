@@ -524,7 +524,7 @@
 			compass {
 				bus-primary;
 				address = <0xC>;
-				orientation = /bits/ 8 <0xff	0	0
+				orientation = /bits/ 8 <0	1	0
 							1	0	0
 							0	0	0xff>;
 			};

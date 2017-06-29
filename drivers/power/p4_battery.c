@@ -25,7 +25,6 @@
 #include <linux/timer.h>
 #include <linux/jiffies.h>
 #include <linux/irq.h>
-#include <linux/wakelock.h>
 #include <asm/mach-types.h>
 #include <linux/io.h>
 #include <linux/gpio.h>
@@ -104,15 +103,15 @@ struct battery_data {
 #endif
 	struct hrtimer		hrtimer;
 	struct mutex		work_lock;
-	struct wake_lock	vbus_wake_lock;
-	struct wake_lock	cable_wake_lock;
-	struct wake_lock	work_wake_lock;
-	struct wake_lock	fullcharge_wake_lock;
+	struct wakeup_source	vbus_wake_source;
+	struct wakeup_source	cable_wake_source;
+	struct wakeup_source	work_wake_source;
+	struct wakeup_source	fullcharge_wake_source;
 #ifdef CONFIG_TARGET_LOCALE_KOR
-	struct wake_lock	low_comp_wake_lock;
+	struct wakeup_source	low_comp_wake_source;
 #endif
 #ifdef __TEST_DEVICE_DRIVER__
-	struct wake_lock	wake_lock_for_dev;
+	struct wakeup_source	wake_source_for_dev;
 #endif /* __TEST_DEVICE_DRIVER__ */
 	enum charger_type	current_cable_status;
 	enum charger_type	previous_cable_status;
@@ -239,7 +238,7 @@ enum hrtimer_restart p3_battery_alarm(struct hrtimer *timer)
 			container_of(timer, struct battery_data, hrtimer);
 
 	pr_debug("%s : p3_battery_alarm.....\n", __func__);
-	wake_lock(&battery->work_wake_lock);
+	__pm_stay_awake(&battery->work_wake_source);
 	schedule_work(&battery->battery_work);
 
 	return HRTIMER_NORESTART;
@@ -335,7 +334,7 @@ static irqreturn_t p3_TA_interrupt_handler(int irq, void *arg)
 	disable_irq_nosync(irq);
 	cancel_delayed_work(&battery->TA_work);
 	queue_delayed_work(battery->p3_TA_workqueue, &battery->TA_work, 30);
-	wake_lock_timeout(&battery->cable_wake_lock, HZ * 2);
+	__pm_wakeup_event(&battery->cable_wake_source, 2000);
 	return IRQ_HANDLED;
 }
 
@@ -526,7 +525,7 @@ static int p3_get_bat_level(struct power_supply *bat_ps)
 		max17042_chip_data->low_comp_pre_cond = 1;
 		pr_info("%s : schedule low batt compensation! pre_count(%d), pre_condition(%d)\n",
 			__func__, max17042_chip_data->pre_cond_ok, max17042_chip_data->low_comp_pre_cond);
-		wake_lock(&battery->low_comp_wake_lock);
+		__pm_stay_awake(&battery->low_comp_wake_source);
 		queue_delayed_work(battery->low_bat_comp_workqueue, &battery->low_comp_work, 0);
 	}
 #else
@@ -1161,9 +1160,9 @@ static ssize_t sec_batt_test_store(struct device *dev,
 		if (sscanf(buf, "%d\n", &mode) == 1) {
 			dev_dbg(dev, "%s: suspend lock (%d)\n", __func__, mode);
 			if (mode)
-				wake_lock(&test_batterydata->wake_lock_for_dev);
+				__pm_stay_awake(&test_batterydata->wake_source_for_dev);
 			else
-				wake_lock_timeout(&test_batterydata->wake_lock_for_dev, HZ / 2);
+				__pm_wakeup_event(&test_batterydata->wake_source_for_dev, 500);
 			ret = count;
 		}
 		break;
@@ -1219,22 +1218,22 @@ static int p3_cable_status_update(struct battery_data *battery, int status)
 	check_usb_status = source = battery->info.charging_source;
 
 	if (source == CHARGER_USB) {
-		wake_lock(&battery->vbus_wake_lock);
+		__pm_stay_awake(&battery->vbus_wake_source);
 	} else {
 		/* give userspace some time to see the uevent and update
 		* LED state or whatnot...
 		*/
 		if (!get_charger_status(battery)) {
 			if (battery->charging_mode_booting)
-				wake_lock_timeout(&battery->vbus_wake_lock,
-						5 * HZ);
+				__pm_wakeup_event(&battery->vbus_wake_source,
+						5000);
 			else
-				wake_lock_timeout(&battery->vbus_wake_lock,
-						HZ / 2);
+				__pm_wakeup_event(&battery->vbus_wake_source,
+						500);
 		}
 	}
 
-	wake_lock(&battery->work_wake_lock);
+	__pm_stay_awake(&battery->work_wake_source);
 	schedule_work(&battery->battery_work);
 
 	pr_debug("%s:call power_supply_changed\n", __func__);
@@ -1279,8 +1278,8 @@ static void p3_bat_status_update(struct power_supply *bat_ps)
 			cancel_delayed_work(&battery->fullcharging_work);
 			schedule_delayed_work(&battery->fullcharging_work,
 					msecs_to_jiffies(300));
-			wake_lock_timeout(&battery->fullcharge_wake_lock,
-					HZ * 30);
+			__pm_wakeup_event(&battery->fullcharge_wake_source,
+					30000);
 		}
 		battery->previous_charging_status = current_charging_status;
 	}
@@ -1332,7 +1331,7 @@ static void p3_bat_work(struct work_struct *work)
 
 	/* prevent suspend before starting the alarm */
 	local_irq_save(flags);
-	wake_unlock(&battery->work_wake_lock);
+	__pm_relax(&battery->work_wake_source);
 	p3_program_alarm(battery, FAST_POLL);
 	local_irq_restore(flags);
 }
@@ -1368,7 +1367,7 @@ static void p3_bat_resume(struct device *dev)
 		battery->slow_poll = 0;
 	}
 
-	wake_lock(&battery->work_wake_lock);
+	__pm_stay_awake(&battery->work_wake_source);
 	schedule_work(&battery->battery_work);
 	pr_info("bat resume end\n");
 }
@@ -1418,7 +1417,7 @@ void p3_cable_charging(struct battery_data *battery)
 		pr_debug("battery is full charged ");
 	}
 
-	wake_lock(&battery->work_wake_lock);
+	__pm_stay_awake(&battery->work_wake_source);
 	schedule_work(&battery->battery_work);
 
 }
@@ -1438,7 +1437,7 @@ int _low_battery_alarm_(struct battery_data *battery)
 	if (!get_charger_status(battery)) {
 		pr_info("soc = 0! Power Off!! ");
 		battery->info.level = 0;
-		wake_lock_timeout(&battery->vbus_wake_lock, HZ);
+		__pm_wakeup_event(&battery->vbus_wake_source, 1000);
 		power_supply_changed(&battery->psy_battery);
 	}
 
@@ -1511,13 +1510,13 @@ static void low_comp_work_handler(struct work_struct *work)
 		else if (comp_result == 1) {
 			pr_info("%s : low compensation occurred!, vcell(%d), current(%d)\n",
 				__func__, fg_vcell, fg_current);
-			wake_lock(&battery->work_wake_lock);
+			__pm_stay_awake(&battery->work_wake_source);
 			schedule_work(&battery->battery_work);
 			break;
 		}
 		msleep(2000);
 	}
-	wake_unlock(&battery->low_comp_wake_lock);
+	__pm_relax(&battery->low_comp_wake_source);
 }
 #endif
 
@@ -1765,21 +1764,15 @@ static int p3_bat_probe(struct platform_device *pdev)
 
 	mutex_init(&battery->work_lock);
 
-	wake_lock_init(&battery->vbus_wake_lock, WAKE_LOCK_SUSPEND,
-		"vbus wake lock");
-	wake_lock_init(&battery->work_wake_lock, WAKE_LOCK_SUSPEND,
-		"batt_work wake lock");
-	wake_lock_init(&battery->cable_wake_lock, WAKE_LOCK_SUSPEND,
-		"temp wake lock");
-	wake_lock_init(&battery->fullcharge_wake_lock, WAKE_LOCK_SUSPEND,
-		"fullcharge wake lock");
+	wakeup_source_init(&battery->vbus_wake_source, "vbus wake lock");
+	wakeup_source_init(&battery->work_wake_source, "batt_work wake lock");
+	wakeup_source_init(&battery->cable_wake_source, "temp wake lock");
+	wakeup_source_init(&battery->fullcharge_wake_source, "fullcharge wake lock");
 #ifdef CONFIG_TARGET_LOCALE_KOR
-	wake_lock_init(&battery->low_comp_wake_lock, WAKE_LOCK_SUSPEND,
-		"low comp wake lock");
+	wakeup_source_init(&battery->low_comp_wake_source, "low comp wake lock");
 #endif
 #ifdef __TEST_DEVICE_DRIVER__
-	wake_lock_init(&battery->wake_lock_for_dev, WAKE_LOCK_SUSPEND,
-		"test mode wake lock");
+	wakeup_source_init(&battery->wake_source_for_dev, "test mode wake lock");
 #endif /* __TEST_DEVICE_DRIVER__ */
 
 	INIT_WORK(&battery->battery_work, p3_bat_work);
@@ -1913,12 +1906,12 @@ err_battery_psy_register:
 	destroy_workqueue(battery->low_bat_comp_workqueue);
 #endif
 err_workqueue_init:
-	wake_lock_destroy(&battery->vbus_wake_lock);
-	wake_lock_destroy(&battery->work_wake_lock);
-	wake_lock_destroy(&battery->cable_wake_lock);
-	wake_lock_destroy(&battery->fullcharge_wake_lock);
+	wakeup_source_trash(&battery->vbus_wake_source);
+	wakeup_source_trash(&battery->work_wake_source);
+	wakeup_source_trash(&battery->cable_wake_source);
+	wakeup_source_trash(&battery->fullcharge_wake_source);
 #ifdef CONFIG_TARGET_LOCALE_KOR
-	wake_lock_destroy(&battery->low_comp_wake_lock);
+	wakeup_source_trash(&battery->low_comp_wake_source);
 #endif
 	mutex_destroy(&battery->work_lock);
 	kfree(battery);
@@ -1946,12 +1939,12 @@ static int p3_bat_remove(struct platform_device *pdev)
 	cancel_delayed_work(&battery->fullcharging_work);
 	cancel_delayed_work(&battery->full_comp_work);
 
-	wake_lock_destroy(&battery->vbus_wake_lock);
-	wake_lock_destroy(&battery->work_wake_lock);
-	wake_lock_destroy(&battery->cable_wake_lock);
-	wake_lock_destroy(&battery->fullcharge_wake_lock);
+	wakeup_source_trash(&battery->vbus_wake_source);
+	wakeup_source_trash(&battery->work_wake_source);
+	wakeup_source_trash(&battery->cable_wake_source);
+	wakeup_source_trash(&battery->fullcharge_wake_source);
 #ifdef CONFIG_TARGET_LOCALE_KOR
-	wake_lock_destroy(&battery->low_comp_wake_lock);
+	wakeup_source_trash(&battery->low_comp_wake_source);
 #endif
 	mutex_destroy(&battery->work_lock);
 

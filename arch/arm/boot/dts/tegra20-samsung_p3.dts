@@ -580,8 +580,8 @@
 
 	i2c@5 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 194 0 /* sda */
-			 &gpio 192 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(Y, 2) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(Y, 0) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <1>;
 		#address-cells = <1>;
@@ -596,8 +596,8 @@
 	};
 	i2c@6 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 112 0 /* sda */
-			 &gpio 119 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(O, 7) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(O, 0) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <1>;
 		#address-cells = <1>;
@@ -618,8 +618,8 @@
 	};
 	i2c@7 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 178 0 /* sda */
-			 &gpio 187 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(W, 2) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(X, 3) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <1>;
 		#address-cells = <1>;
@@ -627,8 +627,8 @@
 	};
 	i2c@8 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 51 0 /* sda */
-			 &gpio 64 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(G, 3) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(I, 0) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <1>;
 		#address-cells = <1>;
@@ -641,8 +641,8 @@
 	};
 	i2c@9 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 195 0 /* sda */
-			 &gpio 193 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(Y, 3) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(Y, 1) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <1>;
 		#address-cells = <1>;
@@ -658,8 +658,9 @@
 	};
 	i2c@10 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 203 0 /* sda */
-			 &gpio 22 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(Z, 3) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(C, 6) GPIO_ACTIVE_HIGH /* scl */
+
 			>;
 		i2c-gpio,delay-us = <3>;
 		i2c-gpio,timeout-ms = <0>;
@@ -682,8 +683,8 @@
 	};
 	i2c@11 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 50 0 /* sda */
-			 &gpio 71 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(G, 2) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(I, 7) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <3>;
 		#address-cells = <1>;
@@ -698,8 +699,8 @@
 	};
 	i2c@12 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 116 0 /* sda */
-			 &gpio 114 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(O, 4) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(O, 2) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <1>;
 		#address-cells = <1>;
@@ -716,8 +717,8 @@
 	};
 	i2c@13 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 59 0 /* sda */
-			 &gpio 58 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(H, 3) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(H, 2) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <3>;
 		#address-cells = <1>;
@@ -725,8 +726,8 @@
 	};
 	i2c@14 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 83 0 /* sda */
-			 &gpio 72 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(K, 3) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(J, 0) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <3>;
 		#address-cells = <1>;
@@ -734,8 +735,8 @@
 	};
 	i2c@15 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio 67 0 /* sda */
-			 &gpio 82 0 /* scl */
+		gpios = <&gpio TEGRA_GPIO(I, 3) GPIO_ACTIVE_HIGH /* sda */
+			&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH /* scl */
 			>;
 		i2c-gpio,delay-us = <1>;
 		#address-cells = <1>;

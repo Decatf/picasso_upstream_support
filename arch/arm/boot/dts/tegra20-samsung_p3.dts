@@ -35,6 +35,19 @@
 
 	cmc623_pwm {
 		compatible = "samsung,cmc623-pwm";
+
+		default-brightness = <150>;
+
+		max-brightness = <255>;
+		mid-brightness = <150>;
+		low-brightness = <50>;
+		dim-brightness = <15>;
+
+		max-backlight = <1600>;
+		mid-backlight = <784>;
+		low-backlight = <90>;
+		dim-backlight = <50>;
+		dark-backlight = <0>;
 	};
 
 	nvmap {

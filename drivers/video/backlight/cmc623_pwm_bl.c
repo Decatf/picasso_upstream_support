@@ -20,7 +20,6 @@
 #include <linux/fb.h>
 #include <linux/backlight.h>
 #include <linux/delay.h>
-#include <linux/earlysuspend.h>
 
 #if defined(CONFIG_MACH_SAMSUNG_P4) || \
 	defined(CONFIG_MACH_SAMSUNG_P4WIFI)|| \
@@ -69,7 +68,6 @@
 
 extern void set_backlight_pwm(int value);
 
-static struct early_suspend	st_early_suspend;
 static struct platform_device *bl_pdev;
 
 static int current_backlight_level = MID_BACKLIGHT_VALUE;
@@ -125,6 +123,8 @@ static void cmc623_pwm_send_intensity(struct backlight_device *bd)
 	int intensity = bd->props.brightness;
 	struct platform_device *pdev = NULL;
 
+	dev_dbg(&bd->dev, "%s: intensity=%d\n", __func__, intensity);
+
 	pdev = dev_get_drvdata(&bd->dev);
 	if (pdev == NULL) {
 		printk(KERN_ERR "%s:failed to get platform device.\n", __func__);
@@ -151,53 +151,41 @@ static void cmc623_pwm_send_intensity(struct backlight_device *bd)
 	current_intensity = intensity;
 }
 
-#if defined(CONFIG_PM) // && !defined(CONFIG_PM_EARLYSUSPEND)
-static int cmc623_pwm_suspend(struct platform_device *swi_dev, pm_message_t state)
+#if defined(CONFIG_PM)
+static int cmc623_pwm_suspend(struct device *dev)
 {
-	struct backlight_device *bd = platform_get_drvdata(swi_dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct backlight_device *bd = platform_get_drvdata(pdev);
 
-	cmc623_pwm_suspended = 1;
-	cmc623_pwm_send_intensity(bd);
+	dev_info(dev, "%s\n", __func__);
+
+	if (!cmc623_pwm_suspended) {
+		cmc623_pwm_suspended = 1;
+		cmc623_pwm_send_intensity(bd);
+	}
 	return 0;
 }
 
-static int cmc623_pwm_resume(struct platform_device *swi_dev)
+static int cmc623_pwm_resume(struct device *dev)
 {
-	struct backlight_device *bd = platform_get_drvdata(swi_dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct backlight_device *bd = platform_get_drvdata(pdev);
 
-	bd->props.brightness = CMC623_PWM_DEFAULT_INTENSITY;
-	cmc623_pwm_suspended = 0;
-	cmc623_pwm_send_intensity(bd);
+	dev_info(dev, "%s\n", __func__);
+
+	if (cmc623_pwm_suspended) {
+		bd->props.brightness = CMC623_PWM_DEFAULT_INTENSITY;
+		cmc623_pwm_suspended = 0;
+		cmc623_pwm_send_intensity(bd);
+	}
 
 	return 0;
-}
-#endif
-
-#if 0
-//#ifdef CONFIG_PM_EARLYSUSPEND
-static void cmc623_pwm_early_suspend(struct early_suspend *h)
-{
-	struct backlight_device *bd = platform_get_drvdata(bl_pdev);
-
-	cmc623_pwm_suspended = 1;
-	cmc623_pwm_send_intensity(bd);
-}
-
-static void cmc623_pwm_early_resume(struct early_suspend *h)
-{
-	struct backlight_device *bd = platform_get_drvdata(bl_pdev);
-
-	/*bd->props.brightness = cmc623_pwm_DEFAULT_INTENSITY;*/
-	cmc623_pwm_suspended = 0;
-
-	cmc623_pwm_send_intensity(bd);
-
 }
 #endif
 
 static int cmc623_pwm_set_intensity(struct backlight_device *bd)
 {
-	/*printk("BD->PROPS.BRIGHTNESS = %d\n", bd->props.brightness);*/
+	dev_dbg(&bd->dev, "%s\n", __func__);
 
 	cmc623_pwm_send_intensity(bd);
 
@@ -255,14 +243,6 @@ static int cmc623_pwm_probe(struct platform_device *pdev)
 
 	bl_pdev = pdev;
 
-#if 0
-//#ifdef CONFIG_PM_EARLYSUSPEND
-	st_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	st_early_suspend.suspend = cmc623_pwm_early_suspend;
-	st_early_suspend.resume = cmc623_pwm_early_resume;
-	register_early_suspend(&st_early_suspend);
-#endif	/* CONFIG_PM_EARLYSUSPEND */
-
 	printk("cmc623_pwm Probe END!!!\n");
 	return 0;
 
@@ -272,11 +252,6 @@ static int cmc623_pwm_remove(struct platform_device *pdev)
 {
 	struct backlight_device *bd = platform_get_drvdata(pdev);
 
-#if 0
-// #ifdef CONFIG_PM_EARLYSUSPEND
-	unregister_early_suspend(&st_early_suspend);
-#endif	/* CONFIG_PM_EARLYSUSPEND */
-
 	bd->props.brightness = 0;
 	bd->props.power = 0;
 	cmc623_pwm_send_intensity(bd);
@@ -285,6 +260,8 @@ static int cmc623_pwm_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+// static SIMPLE_DEV_PM_OPS(cmc623_pwm_pm_ops, cmc623_pwm_suspend, cmc623_pwm_resume);
 
 static const struct of_device_id cmc623_pwm_of_ids[] = {
 	{ .compatible = "samsung,cmc623-pwm" },
@@ -296,13 +273,10 @@ static struct platform_driver cmc623_pwm_driver = {
 		.name	= "cmc623_pwm_bl",
 		.of_match_table = cmc623_pwm_of_ids,
 		.owner	= THIS_MODULE,
+		// .pm	= &cmc623_pwm_pm_ops,
 	},
 	.probe		= cmc623_pwm_probe,
 	.remove		= cmc623_pwm_remove,
-#if defined(CONFIG_PM) // && !defined(CONFIG_PM_EARLYSUSPEND)
-	.suspend	= cmc623_pwm_suspend,
-	.resume		= cmc623_pwm_resume,
-#endif
 };
 
 static int __init cmc623_pwm_init(void)

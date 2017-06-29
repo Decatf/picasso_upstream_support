@@ -21,56 +21,32 @@
 #include <linux/backlight.h>
 #include <linux/delay.h>
 
-#if defined(CONFIG_MACH_SAMSUNG_P4) || \
-	defined(CONFIG_MACH_SAMSUNG_P4WIFI)|| \
-	defined(CONFIG_MACH_SAMSUNG_P4LTE)
-#define CMC623_PWM_MAX_INTENSITY		255
-#define CMC623_PWM_DEFAULT_INTENSITY	150
-#define MAX_LEVEL			1600
+#define CMC623_PWM_MAX_BRIGHTNESS			255
+#define CMC623_PWM_MAX_BACKLIGHT			1600
 
-/*brightness tuning*/
-#define MAX_BRIGHTNESS_LEVEL 255
-#define MID_BRIGHTNESS_LEVEL 150
-#define LOW_BRIGHTNESS_LEVEL 50
-#define DIM_BRIGHTNESS_LEVEL 15
-#elif defined(CONFIG_MACH_SAMSUNG_P5)
-#define CMC623_PWM_MAX_INTENSITY		255
-#define CMC623_PWM_DEFAULT_INTENSITY	150
-#define MAX_LEVEL			1600
+struct cmc623_pwm_platform_data {
+	struct backlight_device *bd;
 
-/*brightness tuning*/
-#define MAX_BRIGHTNESS_LEVEL 255
-#define MID_BRIGHTNESS_LEVEL 150
-#define LOW_BRIGHTNESS_LEVEL 30
-#define DIM_BRIGHTNESS_LEVEL 20
+	int default_brightness;
 
+	int max_brightness;
+	int mid_brightness;
+	int low_brightness;
+	int dim_brightness;
 
-#endif
-#if defined(CONFIG_MACH_SAMSUNG_P4) || \
- defined(CONFIG_MACH_SAMSUNG_P4WIFI) || \
- defined(CONFIG_MACH_SAMSUNG_P4LTE)
-
-#define MAX_BACKLIGHT_VALUE 1600 	/* 100%*/
-#define MID_BACKLIGHT_VALUE 784  	/*36.5%*/
-#define LOW_BACKLIGHT_VALUE 90 	    /*2%*/
-#define DIM_BACKLIGHT_VALUE 50 	    /*2%*/
-#define DARK_BACKLIGHT_VALUE 0
-#elif defined(CONFIG_MACH_SAMSUNG_P5)
-#define MAX_BACKLIGHT_VALUE 1600 	/* 100%*/
-#define MID_BACKLIGHT_VALUE 784  	/*32% : 125nits */
-#define LOW_BACKLIGHT_VALUE 60 	/*2%*/
-#define DIM_BACKLIGHT_VALUE 60 	/*2%*/
-#define DARK_BACKLIGHT_VALUE 60
-#endif
-
-
+	int max_backlight;
+	int mid_backlight;
+	int low_backlight;
+	int dim_backlight;
+	int dark_backlight;
+};
 
 
 extern void set_backlight_pwm(int value);
 
 static struct platform_device *bl_pdev;
 
-static int current_backlight_level = MID_BACKLIGHT_VALUE;
+static int current_backlight_level;
 
 static int cmc623_pwm_suspended;
 static int current_intensity;
@@ -87,28 +63,40 @@ static void cmc623_pwm_apply_brightness(struct platform_device *pdev, int level)
 
 static void cmc623_pwm_backlight_ctl(struct platform_device *pdev, int intensity)
 {
+	struct cmc623_pwm_platform_data *pdata = platform_get_drvdata(pdev);
 	int tune_level;
 
-		/* brightness tuning*/
-		if (intensity >= MID_BRIGHTNESS_LEVEL)
-			tune_level =  MID_BACKLIGHT_VALUE +
-				((intensity - MID_BRIGHTNESS_LEVEL) *
-					(MAX_BACKLIGHT_VALUE-MID_BACKLIGHT_VALUE) /
-					(MAX_BRIGHTNESS_LEVEL-MID_BRIGHTNESS_LEVEL));
-		else if (intensity >= LOW_BRIGHTNESS_LEVEL)
-			tune_level = LOW_BACKLIGHT_VALUE +
-				((intensity - LOW_BRIGHTNESS_LEVEL) *
-					(MID_BACKLIGHT_VALUE-LOW_BACKLIGHT_VALUE) /
-					(MID_BRIGHTNESS_LEVEL-LOW_BRIGHTNESS_LEVEL));
-		else if (intensity >= DIM_BRIGHTNESS_LEVEL)
-			tune_level = DIM_BACKLIGHT_VALUE +
-				((intensity - DIM_BRIGHTNESS_LEVEL) *
-					(LOW_BACKLIGHT_VALUE-DIM_BACKLIGHT_VALUE) /
-					(LOW_BRIGHTNESS_LEVEL-DIM_BRIGHTNESS_LEVEL));
-		else if (intensity > 0)
-			tune_level = DARK_BACKLIGHT_VALUE;
-		else
-			tune_level = intensity;
+	int max_brightness = pdata->max_brightness;
+	int mid_brightness = pdata->mid_brightness;
+	int low_brightness = pdata->low_brightness;
+	int dim_brightness = pdata->dim_brightness;
+
+	int max_backlight = pdata->max_backlight;
+	int mid_backlight = pdata->mid_backlight;
+	int low_backlight = pdata->low_backlight;
+	int dim_backlight = pdata->dim_backlight;
+	int dark_backlight = pdata->dark_backlight;
+
+	/* brightness tuning*/
+	if (intensity >= mid_brightness)
+		tune_level =  mid_backlight +
+			((intensity - mid_brightness) *
+				(max_backlight-mid_backlight) /
+				(max_brightness-mid_brightness));
+	else if (intensity >= low_brightness)
+		tune_level = low_backlight +
+			((intensity - low_brightness) *
+				(mid_backlight-low_backlight) /
+				(mid_brightness-low_brightness));
+	else if (intensity >= dim_brightness)
+		tune_level = dim_backlight +
+			((intensity - dim_brightness) *
+				(low_backlight-dim_backlight) /
+				(low_brightness-dim_brightness));
+	else if (intensity > 0)
+		tune_level = dark_backlight;
+	else
+		tune_level = intensity;
 
 	/*printk("--- [cmc]%d(%d)---\n", intensity, tune_level);*/
    	//printk("[CMC623:INFO] Intensity : %d, Tuned Intensity : %d\n",intensity, tune_level);
@@ -155,7 +143,8 @@ static void cmc623_pwm_send_intensity(struct backlight_device *bd)
 static int cmc623_pwm_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct backlight_device *bd = platform_get_drvdata(pdev);
+	struct cmc623_pwm_platform_data *pdata = platform_get_drvdata(pdev);
+	struct backlight_device *bd = pdata->bd;
 
 	dev_info(dev, "%s\n", __func__);
 
@@ -169,12 +158,13 @@ static int cmc623_pwm_suspend(struct device *dev)
 static int cmc623_pwm_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct backlight_device *bd = platform_get_drvdata(pdev);
+	struct cmc623_pwm_platform_data *pdata = platform_get_drvdata(pdev);
+	struct backlight_device *bd = pdata->bd;
 
 	dev_info(dev, "%s\n", __func__);
 
 	if (cmc623_pwm_suspended) {
-		bd->props.brightness = CMC623_PWM_DEFAULT_INTENSITY;
+		bd->props.brightness = pdata->default_brightness;
 		cmc623_pwm_suspended = 0;
 		cmc623_pwm_send_intensity(bd);
 	}
@@ -219,28 +209,139 @@ void cmc623_pwm_set_brightness(int brightness)
 }
 EXPORT_SYMBOL(cmc623_pwm_set_brightness);
 
+static int cmc623_pwm_validate_config(struct cmc623_pwm_platform_data *pdata)
+{
+	if (pdata->default_brightness < 0 ||
+			pdata->default_brightness >= CMC623_PWM_MAX_BRIGHTNESS)
+		return -EINVAL;
+
+	if (pdata->max_brightness < 0 ||
+			pdata->max_brightness > CMC623_PWM_MAX_BRIGHTNESS)
+		return -EINVAL;
+	if (pdata->mid_brightness < 0 ||
+			pdata->mid_brightness > CMC623_PWM_MAX_BRIGHTNESS)
+		return -EINVAL;
+	if (pdata->low_brightness < 0 ||
+			pdata->low_brightness > CMC623_PWM_MAX_BRIGHTNESS)
+		return -EINVAL;
+	if (pdata->dim_brightness < 0 ||
+			pdata->dim_brightness > CMC623_PWM_MAX_BRIGHTNESS)
+		return -EINVAL;
+
+	if (pdata->max_backlight < 0 ||
+			pdata->max_backlight > CMC623_PWM_MAX_BACKLIGHT)
+		return -EINVAL;
+	if (pdata->mid_backlight < 0 ||
+			pdata->mid_backlight > CMC623_PWM_MAX_BACKLIGHT)
+		return -EINVAL;
+	if (pdata->low_backlight < 0 ||
+			pdata->low_backlight > CMC623_PWM_MAX_BACKLIGHT)
+		return -EINVAL;
+	if (pdata->dim_backlight < 0 ||
+			pdata->dim_backlight > CMC623_PWM_MAX_BACKLIGHT)
+		return -EINVAL;
+	if (pdata->dark_backlight < 0 ||
+			pdata->dark_backlight > CMC623_PWM_MAX_BACKLIGHT)
+		return -EINVAL;
+
+	if (pdata->max_brightness < pdata->mid_brightness ||
+			pdata->mid_brightness < pdata->low_brightness ||
+			pdata->low_brightness < pdata->dim_brightness)
+		return -EINVAL;
+
+	if (pdata->max_backlight < pdata->mid_backlight ||
+			pdata->mid_backlight < pdata->low_backlight ||
+			pdata->low_backlight < pdata->dim_backlight ||
+			pdata->dim_backlight < pdata->dark_backlight)
+		return -EINVAL;
+
+	return 0;
+}
+
+#ifdef CONFIG_OF
+static struct cmc623_pwm_platform_data* cmc623_pwm_parse_dt(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct cmc623_pwm_platform_data *pdata;
+	u32 val;
+
+	pdata = kzalloc(sizeof(struct cmc623_pwm_platform_data), GFP_KERNEL);
+	if (!pdata) {
+		pr_err("%s: error allocating memory for platform data.\n", __func__);
+		return -ENOMEM;
+	}
+
+	if (!of_property_read_u32(np, "default-brightness", &val))
+		pdata->default_brightness = val;
+
+	if (!of_property_read_u32(np, "max-brightness", &val))
+		pdata->max_brightness = val;
+	if (!of_property_read_u32(np, "mid-brightness", &val))
+		pdata->mid_brightness = val;
+	if (!of_property_read_u32(np, "low-brightness", &val))
+		pdata->low_brightness = val;
+	if (!of_property_read_u32(np, "dim-brightness", &val))
+		pdata->dim_brightness = val;
+
+	if (!of_property_read_u32(np, "max-backlight", &val))
+		pdata->max_backlight = val;
+	if (!of_property_read_u32(np, "mid-backlight", &val))
+		pdata->mid_backlight = val;
+	if (!of_property_read_u32(np, "low-backlight", &val))
+		pdata->low_backlight = val;
+	if (!of_property_read_u32(np, "dim-backlight", &val))
+		pdata->dim_backlight = val;
+	if (!of_property_read_u32(np, "dark-backlight", &val))
+		pdata->dark_backlight = val;
+
+	return pdata;
+}
+#else
+static struct cmc623_pwm_platform_data* cmc623_pwm_parse_dt(struct device_node *, int *)
+{
+	return -EINVAL;
+}
+#endif
+
 static int cmc623_pwm_probe(struct platform_device *pdev)
 {
+	struct cmc623_pwm_platform_data *pdata;
 	struct backlight_properties props;
 	struct backlight_device *bd;
 
 	printk("cmc623_pwm Probe START!!!\n");
+
+	pdata = cmc623_pwm_parse_dt(pdev);
+	if (!pdata) {
+		pr_err("%s: error parsing device tree\n", __func__);
+		return -EINVAL;
+	}
+
+	if (cmc623_pwm_validate_config(pdata)) {
+		pr_err("%s: invalid device tree configuation\n", __func__);
+		kfree(pdata);
+		return -EINVAL;
+	}
 
 	props.type = BACKLIGHT_RAW;
 
 	bd = backlight_device_register("pwm-backlight",
 		&pdev->dev, pdev, &cmc623_pwm_ops, &props);
 
-	if (IS_ERR(bd))
+	if (IS_ERR(bd)) {
+		kfree(pdata);
 		return PTR_ERR(bd);
+	}
 
-	platform_set_drvdata(pdev, bd);
+	pdata->bd = bd;
+	platform_set_drvdata(pdev, pdata);
 
-	bd->props.max_brightness = CMC623_PWM_MAX_INTENSITY;
-	bd->props.brightness = CMC623_PWM_DEFAULT_INTENSITY;
+	bd->props.max_brightness = CMC623_PWM_MAX_BRIGHTNESS;
+	bd->props.brightness = pdata->default_brightness;
 
 	dev_info(&pdev->dev, "cmc623_pwm backlight driver is enabled.\n");
 
+	current_backlight_level = pdata->mid_backlight;
 	bl_pdev = pdev;
 
 	printk("cmc623_pwm Probe END!!!\n");
@@ -250,7 +351,8 @@ static int cmc623_pwm_probe(struct platform_device *pdev)
 
 static int cmc623_pwm_remove(struct platform_device *pdev)
 {
-	struct backlight_device *bd = platform_get_drvdata(pdev);
+	struct cmc623_pwm_platform_data *pdata = platform_get_drvdata(pdev);
+	struct backlight_device *bd = pdata->bd;
 
 	bd->props.brightness = 0;
 	bd->props.power = 0;

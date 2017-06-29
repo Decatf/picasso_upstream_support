@@ -570,7 +570,6 @@ int akm8975_probe(struct i2c_client *client,
 
 		if (of_irq_to_resource(of_node, 0, &r_irq))
 			pdata->gpio_data_ready_int = r_irq.start;
-
 	}
 
 	pr_info("%s: pdata->gpio_data_ready_int=%d\n", __func__, pdata->gpio_data_ready_int);
@@ -596,7 +595,7 @@ int akm8975_probe(struct i2c_client *client,
 		goto exit_alloc_data_failed;
 	}
 
-	akm->pdata = client->dev.platform_data;
+	akm->pdata = pdata;
 	mutex_init(&akm->lock);
 	init_completion(&akm->data_ready);
 
@@ -702,6 +701,8 @@ exit_set_mode_power_down_failed:
 	kfree(akm);
 exit_alloc_data_failed:
 exit_check_functionality_failed:
+	if (of_node)
+		kfree(pdata);
 exit_platform_data_null:
 
 	printk(KERN_INFO "%s fail\n", __func__);
@@ -715,6 +716,9 @@ static int akm8975_remove(struct i2c_client *client)
 	misc_deregister(&akm->akmd_device);
 	free_irq(akm->irq, akm);
 	gpio_free(akm->pdata->gpio_data_ready_int);
+#ifdef CONFIG_OF
+	kfree(akm->pdata);
+#endif
 	mutex_destroy(&akm->lock);
 	kfree(akm);
 	return 0;

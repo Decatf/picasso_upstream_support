@@ -792,7 +792,6 @@
 					regulator-name = "vdd_sm0,vdd_core";
 					regulator-min-microvolt = <725000>;
 					regulator-max-microvolt = <1500000>;
-					regulator-boot-on;
 					regulator-always-on;
 				};
 
@@ -800,7 +799,6 @@
 					regulator-name = "vdd_sm1,vdd_cpu";
 					regulator-min-microvolt = <725000>;
 					regulator-max-microvolt = <1500000>;
-					regulator-boot-on;
 					regulator-always-on;
 				};
 
@@ -808,7 +806,6 @@
 					regulator-name = "vdd_sm2,DBVDD,AVDD2,CPVDD";
 					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <1800000>;
-					regulator-boot-on;
 					regulator-always-on;
 				};
 
@@ -818,7 +815,6 @@
 					regulator-name = "vdd_ldo1,avdd_pll*";
 					regulator-min-microvolt = <1100000>;
 					regulator-max-microvolt = <1100000>;
-					regulator-boot-on;
 					regulator-always-on;
 				};
 
@@ -826,7 +822,6 @@
 					regulator-name = "vdd_ldo2,vdd_rtc,vdd_aon";
 					regulator-min-microvolt = <725000>;
 					regulator-max-microvolt = <1500000>;
-					regulator-boot-on;
 					regulator-always-on;
 				};
 
@@ -834,7 +829,6 @@
 					regulator-name = "vdd_ldo3,avdd_usb*,avdd_lvds";
 					regulator-min-microvolt = <3300000>;
 					regulator-max-microvolt = <3300000>;
-					regulator-boot-on;
 					regulator-always-on;
 				};
 
@@ -842,7 +836,6 @@
 					regulator-name = "vdd_ldo4,avdd_osc,vddio_sys";
 					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <1800000>;
-					regulator-boot-on;
 					regulator-always-on;
 				};
 
@@ -850,13 +843,13 @@
 					regulator-name = "vdd_ldo5,vcore_mmc";
 					regulator-min-microvolt = <1250000>;
 					regulator-max-microvolt = <3300000>;
-					regulator-always-on;
 				};
 
 				vbus1_reg: ldo6 {
 					regulator-name = "vdd_ldo6,vddio_vi,vdd_nct1008";
 					regulator-min-microvolt = <3300000>;
 					regulator-max-microvolt = <3300000>;
+					regulator-boot-on;
 				};
 
 				ldo7 {
@@ -875,7 +868,6 @@
 					regulator-name = "vdd_ldo9,avdd_2v85,vdd_ddr_rx";
 					regulator-min-microvolt = <2850000>;
 					regulator-max-microvolt = <2850000>;
-					regulator-boot-on;
 					regulator-always-on;
 				};
 /*

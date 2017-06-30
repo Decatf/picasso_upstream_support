@@ -1170,7 +1170,6 @@
 		#size-cells = < 0 >;
 		compatible = "nvidia,tegra20-emc";
 
-		/*
 		emc-table@25000 {
 			reg = <25000>;
 			compatible = "nvidia,tegra20-emc-table";
@@ -1222,7 +1221,6 @@
 				0x0007c000 0x00000000 0x00000000 0x00000007
 				0x00000000 0x00000000 0x00000000 0x00000000 >;
 		};
-		*/
 		emc-table@150000 {
 			reg = <150000>;
 			compatible = "nvidia,tegra20-emc-table";

@@ -1137,6 +1137,7 @@
 		clock-frequency = <48000000>;
 		non-removable;
 		wifi-host;
+		sd-ignore-pm-notify;
 	};
 
 	wifi {
